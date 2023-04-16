@@ -3,7 +3,7 @@ Sensor de monitoramento para aplicações na agricultura
 
 O Agro Smart Sensor é um projeto de faculdade e tem como objetivo a criação de un dispositivo de baixo custo que possa ser alimentado por pilhas ou bateria com as seguintes aplicações:
   
-  1 leitura da humidade do solo
+  1 leitura da umidade do solo
   2 leitura de temperatura
   3 leitura de sinais analógicos externos
 

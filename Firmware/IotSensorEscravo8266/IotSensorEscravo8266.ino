@@ -1,7 +1,8 @@
 //#include <Arduino.h>
-#include <esp_now.h>
-#include <esp_wifi.h>
-#include <WiFi.h>
+#include <espnow.h>
+//#include <esp_wifi.h>
+#include <ESP8266WiFi.h>
+//#include <WiFi.h>
 #include <EEPROM.h>
 
 
@@ -16,7 +17,7 @@ enum MessageType {PAIRING, DATA,};
 MessageType messageType;
 
 enum DeviceType {MESTRE, UMIDADE, TEMPERATURA, NIVEL};
-DeviceType DeviceType = UMIDADE;
+DeviceType DeviceType = TEMPERATURA;
 
 typedef struct struct_message {
   uint8_t msgType;
@@ -40,36 +41,28 @@ struct_pairing pairingData;
   int lastChannel;
 #endif  
 uint8_t channel = 1;
- 
 unsigned long currentMillis = millis();
 unsigned long previousMillis = 0;   // Stores last time temperature was published
 const long interval = 30000;        // Interval at which to publish sensor readings
-bool led_state_ant = false; 
 
-void addPeer(const uint8_t *mac_addr, uint8_t chan)
+void addPeer(uint8_t *mac_addr, uint8_t chan)
 {
-  esp_now_peer_info_t peer;
-  ESP_ERROR_CHECK(esp_wifi_set_channel(chan ,WIFI_SECOND_CHAN_NONE));
-  esp_now_del_peer(mac_addr);
-  memset(&peer, 0, sizeof(esp_now_peer_info_t));
-  peer.channel = chan;
-  peer.encrypt = 0;
-  memcpy(peer.peer_addr, mac_addr, sizeof(uint8_t [6]));
-  esp_err_t addStatus = esp_now_add_peer(&peer);
-  if (addStatus == ESP_OK) {
-    Serial.println("Pareado");
-  }
-  else 
+  bool exists = esp_now_is_peer_exist(mac_addr);
+  if (exists) 
   {
-    Serial.println("Falha ao parear");
+    Serial.println("Dispositivo já pareado");
   }
-  memcpy(Broadcast, mac_addr, sizeof(uint8_t[6]));
+  else
+  {
+    esp_now_del_peer(mac_addr);
+    esp_now_set_self_role(ESP_NOW_ROLE_COMBO);
+    esp_now_add_peer(mac_addr, ESP_NOW_ROLE_COMBO, chan, NULL, 0);
+    memcpy(Broadcast, mac_addr, sizeof(uint8_t[6]));
+    Serial.println("Dispositivo cadastrado");
+  }
 }
 
-void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
-}
-
-void OnDataRecv(const uint8_t * mac_addr, const uint8_t *Data, int len) { 
+void OnDataRecv(uint8_t * mac_addr, uint8_t *Data, uint8_t len) { 
   uint8_t type = Data[0];
   switch (type) 
   {
@@ -97,16 +90,17 @@ PairingStatus autoPairing(){
   switch(pairingStatus) 
   {
     case PAIR_REQUEST:
-      // set WiFi channel   
-      ESP_ERROR_CHECK(esp_wifi_set_channel(channel,  WIFI_SECOND_CHAN_NONE));
-      if (esp_now_init() != ESP_OK) {
-      }
-      esp_now_register_send_cb(OnDataSent);
+      esp_now_deinit();
+      WiFi.mode(WIFI_STA);
+      wifi_promiscuous_enable(1);
+      wifi_set_channel(channel);
+      wifi_promiscuous_enable(0);
+      WiFi.disconnect();
+      if (esp_now_init() != ERR_OK) ESP.restart();
+      esp_now_set_self_role(ESP_NOW_ROLE_COMBO);
       esp_now_register_recv_cb(OnDataRecv);
       pairingData.msgType = PAIRING;
       pairingData.Device_Type = DeviceType;    
-      pairingData.channel = channel;
-      addPeer(Broadcast, channel);
       esp_now_send(Broadcast, (uint8_t *) &pairingData, sizeof(pairingData));
       previousMillis = millis();
       pairingStatus = PAIR_REQUESTED;
@@ -134,12 +128,16 @@ PairingStatus autoPairing(){
   return pairingStatus;
 }  
 
-void setup() {
+void setup() 
+{
+  pinMode(2, OUTPUT);
+  digitalWrite(2, HIGH);
   Serial.begin(115200);
-  pinMode(LED_BUILTIN, OUTPUT);
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
-
+  if (esp_now_init() != ERR_OK) ESP.restart();
+  esp_now_set_self_role(ESP_NOW_ROLE_COMBO);
+  esp_now_register_recv_cb(OnDataRecv);
   #ifdef SAVE_CHANNEL 
     EEPROM.begin(10);
     lastChannel = EEPROM.read(0);
@@ -156,15 +154,12 @@ void loop()
     unsigned long currentMillis = millis();
     if (currentMillis - previousMillis >= interval) 
     {
-      // Save the last time a new reading was published
-
-      if(led_state_ant == true) digitalWrite(LED_BUILTIN, false), led_state_ant = false;
-      else digitalWrite(LED_BUILTIN, true), led_state_ant = true;
       previousMillis = currentMillis;
       DataSent.msgType = DATA;
       DataSent.Device_Type = DeviceType;
-      DataSent.hum = random(100);
+      DataSent.temp = random(100);
       esp_now_send(Broadcast, (uint8_t *) &DataSent, sizeof(DataSent));
     }
+
   }
 }
