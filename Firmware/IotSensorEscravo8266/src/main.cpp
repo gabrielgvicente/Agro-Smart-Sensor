@@ -1,4 +1,4 @@
-//#include <Arduino.h>
+#include <Arduino.h>
 #include <espnow.h>
 //#include <esp_wifi.h>
 #include <ESP8266WiFi.h>
@@ -10,14 +10,14 @@
 
 uint8_t Broadcast[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
-enum PairingStatus {NOT_PAIRED, PAIR_REQUEST, PAIR_REQUESTED, PAIR_PAIRED,};
-PairingStatus pairingStatus = NOT_PAIRED;
+enum PairingStatus {PAIR_REQUEST, PAIR_REQUESTED, PAIR_PAIRED,};
+PairingStatus pairingStatus = PAIR_REQUEST;
 
 enum MessageType {PAIRING, DATA,};
 MessageType messageType;
 
 enum DeviceType {MESTRE, UMIDADE, TEMPERATURA, NIVEL};
-DeviceType DeviceType = TEMPERATURA;
+DeviceType deviceType = TEMPERATURA;
 
 typedef struct struct_message {
   uint8_t msgType;
@@ -100,7 +100,7 @@ PairingStatus autoPairing(){
       esp_now_set_self_role(ESP_NOW_ROLE_COMBO);
       esp_now_register_recv_cb(OnDataRecv);
       pairingData.msgType = PAIRING;
-      pairingData.Device_Type = DeviceType;    
+      pairingData.Device_Type = deviceType;    
       esp_now_send(Broadcast, (uint8_t *) &pairingData, sizeof(pairingData));
       previousMillis = millis();
       pairingStatus = PAIR_REQUESTED;
@@ -145,7 +145,6 @@ void setup()
       channel = lastChannel; 
     }
   #endif 
-  pairingStatus = PAIR_REQUEST;
 }  
 
 void loop() 
@@ -156,7 +155,7 @@ void loop()
     {
       previousMillis = currentMillis;
       DataSent.msgType = DATA;
-      DataSent.Device_Type = DeviceType;
+      DataSent.Device_Type = deviceType;
       DataSent.temp = random(100);
       esp_now_send(Broadcast, (uint8_t *) &DataSent, sizeof(DataSent));
     }
