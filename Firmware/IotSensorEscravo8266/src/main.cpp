@@ -10,40 +10,37 @@
 
 uint8_t Broadcast[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
 
-enum PairingStatus {PAIR_REQUEST, PAIR_REQUESTED, PAIR_PAIRED,};
+enum PairingStatus {PAIR_REQUEST, PAIR_REQUESTED, PAIR_PAIRED};
 PairingStatus pairingStatus = PAIR_REQUEST;
 
-enum MessageType {PAIRING, DATA,};
+enum MessageType {PAIRING, DATA};
 MessageType messageType;
 
 enum DeviceType {MESTRE, UMIDADE, TEMPERATURA, NIVEL};
 DeviceType deviceType = TEMPERATURA;
 
-typedef struct struct_message {
+typedef struct {
   uint8_t msgType;
   uint8_t Device_Type;
   float temp;
   float hum;
   bool on_off;
-} struct_message;
-struct_message DataSent;
-struct_message DataRecv;
+} struct_message_t;
+struct_message_t DataSent;
+struct_message_t DataRecv;
 
-typedef struct struct_pairing {   
+typedef struct {   
     uint8_t msgType;
     uint8_t Device_Type;
     uint8_t macAddr[6];
     uint8_t channel;
-} struct_pairing;
-struct_pairing pairingData;
-
-#ifdef SAVE_CHANNEL
-  int lastChannel;
-#endif  
+} struct_pairing_t;
+struct_pairing_t pairingData;
+ 
 uint8_t channel = 1;
 unsigned long currentMillis = millis();
-unsigned long previousMillis = 0;   // Stores last time temperature was published
-const long interval = 30000;        // Interval at which to publish sensor readings
+unsigned long previousMillis = 0;
+const long interval = 30000;        
 
 void addPeer(uint8_t *mac_addr, uint8_t chan)
 {
@@ -70,23 +67,22 @@ void OnDataRecv(uint8_t * mac_addr, uint8_t *Data, uint8_t len) {
       memcpy(&DataRecv, Data, sizeof(DataRecv));
       break;
 
-    case PAIRING:    // we received pairing data from server
+    case PAIRING:
       memcpy(&pairingData, Data, sizeof(pairingData));
       if (pairingData.Device_Type == MESTRE) 
       { 
-        addPeer(pairingData.macAddr, pairingData.channel); // add the server  to the peer list 
-        #ifdef SAVE_CHANNEL
-          lastChannel = pairingData.channel;
-          EEPROM.write(0, pairingData.channel);
-          EEPROM.commit();
-        #endif  
-        pairingStatus = PAIR_PAIRED;             // set the pairing status
+        addPeer(pairingData.macAddr, pairingData.channel);  
+        channel = pairingData.channel;
+        EEPROM.write(0, pairingData.channel);
+        EEPROM.commit();  
+        pairingStatus = PAIR_PAIRED;      
       }
       break;
   }  
 }
 
-PairingStatus autoPairing(){
+PairingStatus autoPairing()
+{
   switch(pairingStatus) 
   {
     case PAIR_REQUEST:
@@ -107,11 +103,10 @@ PairingStatus autoPairing(){
     break;
 
     case PAIR_REQUESTED:
-      // time out to allow receiving response from server
       currentMillis = millis();
-      if(currentMillis - previousMillis > 250) {
+      if(currentMillis - previousMillis > 300) 
+      {
         previousMillis = currentMillis;
-        // time out expired,  try next channel
         channel ++;
         if (channel > MAX_CHANNEL){
           channel = 1;
@@ -138,13 +133,8 @@ void setup()
   if (esp_now_init() != ERR_OK) ESP.restart();
   esp_now_set_self_role(ESP_NOW_ROLE_COMBO);
   esp_now_register_recv_cb(OnDataRecv);
-  #ifdef SAVE_CHANNEL 
-    EEPROM.begin(10);
-    lastChannel = EEPROM.read(0);
-    if (lastChannel >= 1 && lastChannel <= MAX_CHANNEL) {
-      channel = lastChannel; 
-    }
-  #endif 
+  EEPROM.begin(10);
+  channel = EEPROM.read(0);
 }  
 
 void loop() 
@@ -158,6 +148,7 @@ void loop()
       DataSent.Device_Type = deviceType;
       DataSent.temp = random(100);
       esp_now_send(Broadcast, (uint8_t *) &DataSent, sizeof(DataSent));
+      //ESP.deepSleep(30e6);
     }
 
   }
