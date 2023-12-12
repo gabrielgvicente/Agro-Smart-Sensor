@@ -4,11 +4,12 @@
 #include <ArduinoJson.h>
 #include <PubSubClient.h>
 
-const char* ssid = "iPhone de Gabriel";
-const char* password = "12345678";
-
+//const char* ssid = "GLOBAL-VISITANTE";
+//const char* password = "GS131313";
+const char* ssid = "AAAAAAA";
+const char* password = "11111";
 const char* mqtt_server = "mqtt.tago.io";
-const char* mqtt_token = "a7c26bd2-e5ec-474a-9186-0c0097a431ef";
+const char* mqtt_token = "655fa59d-8713-468e-ba4a-c346e295762e";
 const char* mqtt_user = "device-token";
 
 uint8_t Broadcast[] = {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
@@ -184,8 +185,7 @@ void setup() {
   Serial.begin(115200);
 
   // Set the device as a Station and Soft Access Point simultaneously
-  WiFi.mode(WIFI_AP_STA);
-  WiFi.begin(ssid, password);
+  WiFi.softAP("CORNO GRITANDO POR FUTEBOL", "1KSWDHFIFHDKN");
   while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     Serial.println("Setting as a Wi-Fi Station..");
@@ -207,8 +207,8 @@ void setup() {
 }
 
 void loop() {
-    if (!client.connected()) {
-    reconnect();
-  }
-  client.loop();
+   // if (!client.connected()) {
+    //reconnect();
+  //}
+  //client.loop();
 }

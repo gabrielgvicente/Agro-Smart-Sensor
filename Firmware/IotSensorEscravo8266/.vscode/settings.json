@@ -1,0 +1,8 @@
+{
+    "idf.port": "/dev/cu.usbserial-143301",
+    "files.associations": {
+        "agrosmart.h": "c",
+        "esp8266wifi.h": "c",
+        "eeprom.h": "c"
+    }
+}
